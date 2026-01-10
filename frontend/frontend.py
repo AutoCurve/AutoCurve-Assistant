@@ -5,13 +5,12 @@ import time
 
 # --- 1. CONFIGURATION & CUSTOM CSS ---
 st.set_page_config(
-    page_title="AutoScout AI",
+    page_title="AutoCurve Assistant",
     page_icon="🚘",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
-
-# Professional "SaaS" Look - Dark Mode & Clean
+#manufac,model,fuel type, odometer,title,transmission,year,
 st.markdown("""
 <style>
     /* Hide Streamlit default menu and footer */
@@ -89,11 +88,11 @@ st.markdown("""
 st.markdown('<p class="hero-title">AutoScout AI</p>', unsafe_allow_html=True)
 st.markdown("<h3 style='text-align: center; color: #8b949e; margin-bottom: 40px;'>The AI-Powered Vehicle Appraiser</h3>", unsafe_allow_html=True)
 
+
 # --- 3. INPUT SECTION (User View) ---
 # Centered layout for the uploader
 c1, c2, c3 = st.columns([1, 2, 1])
 with c2:
-    # NO API KEY INPUT HERE. Just the file.
     uploaded_file = st.file_uploader("Upload Vehicle Photo", type=["jpg", "png", "jpeg"])
 
 # --- 4. MAIN APP LOGIC ---
@@ -119,7 +118,7 @@ if uploaded_file:
                 status_text = st.empty()
                 
                 # --- STEP 1: VISION SCAN ---
-                status_text.markdown("### 👁️ Scanning image for defects...")
+                status_text.markdown(" 👁️ Scanning image for defects...")
                 progress_bar.progress(10)
                 
                 # Call Backend (No API key passed - backend handles it)
