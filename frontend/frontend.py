@@ -85,7 +85,6 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # --- 2. HEADER SECTION ---
-st.markdown('<p class="hero-title">AutoScout AI</p>', unsafe_allow_html=True)
 st.markdown("<h3 style='text-align: center; color: #8b949e; margin-bottom: 40px;'>The AI-Powered Vehicle Appraiser</h3>", unsafe_allow_html=True)
 
 
@@ -96,46 +95,12 @@ with c2:
     uploaded_file = st.file_uploader("Upload Vehicle Photo", type=["jpg", "png", "jpeg"])
 #manufac,model,fuel type, odometer,title,transmission,year,
 
-manufacturers = [
-    "acura",
-    "alfa-romeo",
-    "aston-martin",
-    "audi",
-    "bmw",
-    "buick",
-    "cadillac",
-    "chevrolet",
-    "chrysler",
-    "dodge",
-    "ferrari",
-    "fiat",
-    "ford",
-    "gmc",
-    "harley-davidson",
-    "honda",
-    "hyundai",
-    "infiniti",
-    "jeep",
-    "kia",
-    "lexus",
-    "lincoln",
-    "mazda",
-    "mercedes-benz",
-    "mercury",
-    "mini",
-    "mitsubishi",
-    "nissan",
-    "pontiac",
-    "porsche",
-    "ram",
-    "rover",
-    "saturn",
-    "subaru",
-    "tesla",
-    "toyota",
-    "volkswagen",
-    "volvo"
-]
+manufacturers = ["acura","alfa-romeo","aston-martin","audi","bmw",
+                 "buick","cadillac","chevrolet","chrysler","dodge","ferrari","fiat","ford",
+                 "gmc","harley-davidson","honda","hyundai","infiniti","jeep","kia","lexus",
+                 "lincoln","mazda","mercedes-benz","mercury","mini","mitsubishi","nissan",
+                 "pontiac","porsche","ram","rover","saturn","subaru","tesla","toyota","volkswagen","volvo"]
+year = st.number_input("Enter the year (1999-2021)", min_value = 1999, max_value= 2021, step = 1, format="%d")
 st.selectbox("Manufacturers", manufacturers)
 
 
