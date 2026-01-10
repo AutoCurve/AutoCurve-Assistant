@@ -4,8 +4,8 @@ from PIL import Image
 import time
 
 # --- 1. CONFIGURATION & CUSTOM CSS ---
+st.title("AutoCurve Assistant") 
 st.set_page_config(
-    page_title="AutoCurve Assistant",
     page_icon="🚘",
     layout="wide",
     initial_sidebar_state="collapsed"
@@ -94,6 +94,55 @@ st.markdown("<h3 style='text-align: center; color: #8b949e; margin-bottom: 40px;
 c1, c2, c3 = st.columns([1, 2, 1])
 with c2:
     uploaded_file = st.file_uploader("Upload Vehicle Photo", type=["jpg", "png", "jpeg"])
+#manufac,model,fuel type, odometer,title,transmission,year,
+
+manufacturers = [
+    "acura",
+    "alfa-romeo",
+    "aston-martin",
+    "audi",
+    "bmw",
+    "buick",
+    "cadillac",
+    "chevrolet",
+    "chrysler",
+    "dodge",
+    "ferrari",
+    "fiat",
+    "ford",
+    "gmc",
+    "harley-davidson",
+    "honda",
+    "hyundai",
+    "infiniti",
+    "jeep",
+    "kia",
+    "lexus",
+    "lincoln",
+    "mazda",
+    "mercedes-benz",
+    "mercury",
+    "mini",
+    "mitsubishi",
+    "nissan",
+    "pontiac",
+    "porsche",
+    "ram",
+    "rover",
+    "saturn",
+    "subaru",
+    "tesla",
+    "toyota",
+    "volkswagen",
+    "volvo"
+]
+st.selectbox("Manufacturers", manufacturers)
+
+
+# manufactor = st.selectmanufacturers = sorted(df["manufacturer"].dropna().unique())
+# st.selectbox("Manufacturer", manufacturers)box("")
+
+
 
 # --- 4. MAIN APP LOGIC ---
 if uploaded_file:
