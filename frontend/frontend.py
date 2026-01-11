@@ -4,12 +4,12 @@ import backend
 from PIL import Image
 import os
 from dotenv import load_dotenv
-import google.generativeai as genai
+from openai import OpenAI
 import pandas as pd
 
 # -------------------- 1. SETUP --------------------
 load_dotenv()
-API_KEY = os.getenv("GOOGLE_API_KEY")
+API_KEY = os.getenv("OPENROUTER_API_KEY")
 
 st.set_page_config(
     page_title="AutoCurve Assistant",
@@ -138,7 +138,7 @@ with right:
 # -------------------- 6. EXECUTION --------------------
 if run_btn:
     if not API_KEY:
-        st.error("GOOGLE_API_KEY missing in .env")
+        st.error("OPENROUTER_API_KEY missing in .env")
         st.stop()
 
     if not uploaded_files:
@@ -146,10 +146,14 @@ if run_btn:
         st.stop()
 
     try:
-        genai.configure(api_key=API_KEY)
-        model = genai.GenerativeModel("gemini-2.5-flash")
+        client = OpenAI(
+        api_key=API_KEY,
+        base_url="https://openrouter.ai/api/v1"
+)
+        MODEL_ID = "google/gemma-3-12b-it:free"
 
-        vision = backend.analyze_image_condition(model, images)
+
+        vision = backend.analyze_image_condition(client, MODEL_ID, images)
         condition_score = vision.get("condition_score", 1.0)
 
         price, fig, similar, err = backend.run_valuation_model(
@@ -169,7 +173,8 @@ if run_btn:
             st.stop()
 
         reviews = backend.get_social_proof(
-            model,
+            client,
+            MODEL_ID,
             f"{year} {selected_make} {selected_model}"
         )
 

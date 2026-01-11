@@ -1,8 +1,9 @@
 import pandas as pd
 from sklearn.linear_model import LinearRegression
 import plotly.express as px
-import google.generativeai as genai
+from openai import OpenAI
 import json
+import base64
 import io
 
 def load_data(path):
@@ -18,23 +19,52 @@ def load_data(path):
         print(f"Error loading data: {e}")
         return None
 
-def analyze_image_condition(model, images):
-    # Gemini can handle multiple PIL Images directly
+def analyze_image_condition(client, model_id, images):
     prompt = """
-    Analyze these vehicle images for its overall condition. Classify the condition as one of: new, like new, excellent, good, fair, salvage.
-    Provide your reasoning, a list of visible defects, and a condition score from 0 to 1.4 where the average is the mean for the 2 values for the classified condition.
-    Output in JSON format with keys: condition, reasoning, visible_defects (as a list), condition_score.
+    Analyze these vehicle images for its overall condition. Classify the condition as one of:
+    new, like new, excellent, good, fair, salvage.
+
+    Provide reasoning, a list of visible defects, and a condition score from 0 to 1.4
+    where average is the mean for the 2 values for the classified condition.
+
+    Output ONLY valid JSON with keys:
+    condition, reasoning, visible_defects (list), condition_score (number).
     """
-    # Generate content with prompt + all images
-    response = model.generate_content([prompt] + images)
-    vision_text = response.text
-    # Parse JSON (strip any markdown)
-    vision_text = vision_text.replace('```json\n', '').replace('\n```', '').strip()
+
+    # Convert PIL images -> data URLs for OpenRouter
+    parts = [{"type": "text", "text": prompt}]
+
+    for img in images[:4]:  # don't spam; 1-4 images is enough
+        buf = io.BytesIO()
+        img.convert("RGB").save(buf, format="JPEG")
+        b64 = base64.b64encode(buf.getvalue()).decode("utf-8")
+        parts.append({
+            "type": "image_url",
+            "image_url": {"url": f"data:image/jpeg;base64,{b64}"}
+        })
+
+    resp = client.chat.completions.create(
+        model=model_id,
+        messages=[{"role": "user", "content": parts}],
+        temperature=0.2,
+        max_tokens=400
+    )
+
+    vision_text = resp.choices[0].message.content or ""
+    vision_text = vision_text.replace("```json", "").replace("```", "").strip()
+
     try:
         vision = json.loads(vision_text)
     except json.JSONDecodeError:
-        vision = {"condition": "good", "reasoning": "Failed to parse analysis.", "visible_defects": [], "condition_score": 1.0}
+        vision = {
+            "condition": "good",
+            "reasoning": f"Failed to parse model output. Raw: {vision_text[:300]}",
+            "visible_defects": [],
+            "condition_score": 1.0
+        }
+
     return vision
+
 
 def run_valuation_model(df, make, model, year, odometer, vision, fuel=None, transmission=None, drive=None):
     make = str(make).strip().lower()
@@ -100,21 +130,28 @@ def run_valuation_model(df, make, model, year, odometer, vision, fuel=None, tran
 
     return price, fig, similar, None
 
-def get_social_proof(model, query):
+def get_social_proof(client, model_id, query):
     prompt = f"""
-    Generate 3 fictional but realistic user reviews or discussions about the '{query}' vehicle from online forums or review sites.
-    Include positive and negative sentiments for balance.
-    Output as JSON list of objects, each with: title (string), snippet (short excerpt string), link (made-up URL string).
+    Generate 3 realistic forum-style discussions about '{query}'.
+    Include mixed sentiments.
+    Output ONLY valid JSON list of objects with: title, snippet, link.
     """
-    response = model.generate_content(prompt)
-    reviews_text = response.text
-    reviews_text = reviews_text.replace('```json\n', '').replace('\n```', '').strip()
+
+    resp = client.chat.completions.create(
+        model=model_id,
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.6,
+        max_tokens=350
+    )
+
+    reviews_text = resp.choices[0].message.content or ""
+    reviews_text = reviews_text.replace("```json", "").replace("```", "").strip()
+
     try:
-        reviews = json.loads(reviews_text)
+        return json.loads(reviews_text)
     except json.JSONDecodeError:
-        reviews = [
+        return [
             {"title": "Default Review 1", "snippet": "Great car!", "link": "https://example.com/review1"},
             {"title": "Default Review 2", "snippet": "Average performance.", "link": "https://example.com/review2"},
-            {"title": "Default Review 3", "snippet": "Some issues noted.", "link": "https://example.com/review3"}
+            {"title": "Default Review 3", "snippet": "Some issues noted.", "link": "https://example.com/review3"},
         ]
-    return reviews
