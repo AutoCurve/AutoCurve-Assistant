@@ -1,4 +1,3 @@
-
 import streamlit as st
 import backend
 from PIL import Image
@@ -7,7 +6,7 @@ from dotenv import load_dotenv
 from openai import OpenAI
 import pandas as pd
 
-# -------------------- 1. SETUP --------------------
+#SETUP
 load_dotenv()
 API_KEY = os.getenv("OPENROUTER_API_KEY")
 
@@ -17,7 +16,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# -------------------- 2. STYLING --------------------
+#STYLING 
 st.markdown("""
 <style>
     .stApp { background-color: #0e1117; color: #fafafa; }
@@ -50,7 +49,7 @@ st.markdown("""
 
 
 
-# -------------------- 4. DATA LOADING (HARD FAIL) --------------------
+#DATA LOADING 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_PATH = os.path.join(BASE_DIR, "database.xlsx")
 
@@ -70,7 +69,7 @@ if not required_cols.issubset(df.columns):
 
 all_makes = sorted(df["manufacturer"].dropna().unique())
 
-# -------------------- 5. INPUT UI --------------------
+#INPUT UI
 left, right = st.columns([1, 1.5], gap="large")
 
 with left:
@@ -119,23 +118,44 @@ with right:
         )
 
     # Additional inputs for fuel, transmission, drive
-    c5, c6 = st.columns(2)
-    with c5:
-        fuels = sorted(subset["fuel"].dropna().unique()) if "fuel" in subset else []
-        selected_fuel = st.selectbox("Fuel Type", fuels)
+    def build_options(frame, col):
+        if col not in frame.columns:
+            return ["Any"]
+        vals = (
+            frame[col]
+            .dropna()
+            .astype(str)
+            .str.strip()
+            .str.lower()
+            .unique()
+            .tolist()
+        )
+        vals = [v for v in vals if v and v != "nan"]
+        return ["Any"] + sorted(vals)
 
-    with c6:
-        transmissions = sorted(subset["transmission"].dropna().unique()) if "transmission" in subset else []
-        selected_transmission = st.selectbox("Transmission Type", transmissions)
+subset_mm = df[
+    (df["manufacturer"] == selected_make) &
+    (df["model"] == selected_model)
+].copy()
 
-    selected_drive = st.selectbox(
-        "Drive Type",
-        sorted(subset["drive"].dropna().unique()) if "drive" in subset else []
-    )
 
-    run_btn = st.button("Run Valuation")
 
-# -------------------- 6. EXECUTION --------------------
+c5, c6 = st.columns(2)
+with c5:
+    selected_fuel = st.selectbox("Fuel Type", build_options(subset_mm, "fuel"))
+with c6:
+    selected_transmission = st.selectbox("Transmission Type", build_options(subset_mm, "transmission"))
+
+selected_drive = st.selectbox("Drive Type", build_options(subset_mm, "drive"))
+
+fuel_arg = None if selected_fuel == "Any" else selected_fuel
+trans_arg = None if selected_transmission == "Any" else selected_transmission
+drive_arg = None if selected_drive == "Any" else selected_drive
+
+
+run_btn = st.button("Run Valuation")
+
+#EXECUTION
 if run_btn:
     if not API_KEY:
         st.error("OPENROUTER_API_KEY missing in .env")
@@ -163,9 +183,9 @@ if run_btn:
             year,
             odometer,
             vision,
-            selected_fuel,
-            selected_transmission,
-            selected_drive
+            fuel_arg,
+            trans_arg,
+            drive_arg
         )
 
         if err:
@@ -173,9 +193,7 @@ if run_btn:
             st.stop()
 
         reviews = backend.get_social_proof(
-            client,
-            MODEL_ID,
-            f"{year} {selected_make} {selected_model}"
+            f"{year} {selected_make} {selected_model} common problems reliability"
         )
 
         m1, m2, m3 = st.columns(3)
