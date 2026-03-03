@@ -22,16 +22,14 @@ def load_data(path):
     except Exception as e:
         print(f"Error loading data: {e}")
         return None
-
 def analyze_image_condition(client, model_id, images):
 
     if not OPENROUTER_LIMITER.allow(1):
         wait = OPENROUTER_LIMITER.retry_after_seconds(1)
-        return{
-            "condition": "good",
-            "reasoning": f"Local rate limit hit. Try again in ~{wait}s.",
-            "visible_defects": [],
-            "condition_score": 1.0
+        return {
+            "ok": False,
+            "error": "rate_limited",
+            "retry_after": round(wait, 2)
         }
     prompt = """
     Analyze these vehicle images for its overall condition. Classify the condition as one of:
