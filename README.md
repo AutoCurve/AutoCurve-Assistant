@@ -4,6 +4,12 @@ AutoCurve Assistant is a Streamlit-based vehicle valuation tool that combines hi
 
 The project is designed to help users get a more informed used-car estimate by considering both structured vehicle details, such as make, model, year, odometer, fuel type, transmission, and drivetrain, and unstructured vehicle images that are analyzed by an AI vision model.
 
+# Contributors 
+
+- [Yuvraj Chahal](https://github.com/yuvrajchahal22)
+- [Karanveeer Singh](https://github.com/ksxngh)
+- Jastej Sandhu
+
 ## Overview
 
 Used vehicle pricing is often inconsistent because two vehicles with the same year and model can have very different values depending on mileage, condition, trim-related attributes, and visible wear. AutoCurve Assistant attempts to solve this by combining multiple signals into one valuation workflow.
