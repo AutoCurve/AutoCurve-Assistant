@@ -27,7 +27,7 @@ def load_data(path):
         if col in df.columns:
             df[col] = df[col].astype(str).str.strip().str.lower()
 
-    # Drop rows with missing critical fields or unrealistic prices
+    #Drop rows with missing critical fields or unrealistic prices
     df = df.dropna(subset=["manufacturer", "model", "year", "price", "odometer"])
     # Remove any rows where normalised string values became "nan"
     for col in cols_to_normalize:
