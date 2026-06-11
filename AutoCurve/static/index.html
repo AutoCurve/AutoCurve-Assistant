@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AutoCurve — AI Car Valuation</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --ink:    #121719;
+      --card:   #222729;
+      --input:  #2b3133;
+      --white:  #ffffff;
+      --parch:  #f1f3f4;
+      --ash:    #909394;
+      --smoke:  #acaeaf;
+      --coral:  #f94d1e;
+      --indigo: #7834b5;
+      --cyan:   #029cff;
+
+      --font-d: 'Playfair Display', Georgia, 'Times New Roman', serif;
+      --font-u: 'Inter', system-ui, -apple-system, sans-serif;
+
+      --r-card:  4px;
+      --r-pill:  9999px;
+      --r-badge: 100px;
+      --max-w:   1200px;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--ink);
+      color: var(--white);
+      font-family: var(--font-u);
+      font-size: 16px;
+      line-height: 1.5;
+      letter-spacing: -0.01em;
+      -webkit-font-smoothing: antialiased;
+      min-height: 100vh;
+    }
+
+    /* ── Nav ────────────────────────────────────────────────────────────── */
+    nav {
+      position: sticky; top: 0; z-index: 100;
+      background: var(--ink);
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+    }
+    .nav-inner {
+      max-width: var(--max-w); margin: 0 auto;
+      padding: 0 24px; height: 60px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .nav-logo {
+      font-family: var(--font-d); font-size: 22px; font-weight: 500;
+      letter-spacing: -0.03em; color: var(--white); text-decoration: none;
+    }
+    .nav-pill {
+      background: var(--card); border: 1px solid rgba(255,255,255,0.08);
+      color: var(--smoke); font-size: 13px; font-weight: 500;
+      padding: 5px 14px; border-radius: var(--r-badge); letter-spacing: -0.01em;
+    }
+
+    /* ── Page wrap ──────────────────────────────────────────────────────── */
+    .page { max-width: var(--max-w); margin: 0 auto; padding: 0 24px; }
+
+    /* ── Hero ───────────────────────────────────────────────────────────── */
+    .hero {
+      padding: 100px 0 80px; text-align: center;
+    }
+    .eyebrow {
+      display: inline-block;
+      background: var(--card); border: 1px solid rgba(255,255,255,0.08);
+      color: var(--smoke); font-size: 13px; font-weight: 500;
+      padding: 6px 16px; border-radius: var(--r-badge);
+      letter-spacing: -0.01em; margin-bottom: 36px;
+    }
+    .hero h1 {
+      font-family: var(--font-d); font-weight: 500;
+      font-size: clamp(48px, 8vw, 77px);
+      line-height: 1; letter-spacing: -0.04em;
+      margin-bottom: 24px;
+    }
+    .hero-sub {
+      font-size: 18px; color: var(--ash); line-height: 1.6;
+      letter-spacing: -0.01em; max-width: 520px;
+      margin: 0 auto 40px;
+    }
+    .hero-btns { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+
+    /* ── Buttons ────────────────────────────────────────────────────────── */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      gap: 8px; border: none; border-radius: var(--r-pill);
+      font-family: var(--font-u); font-size: 16px; font-weight: 600;
+      letter-spacing: -0.01em; padding: 14px 28px;
+      cursor: pointer; text-decoration: none; transition: opacity .15s;
+      white-space: nowrap;
+    }
+    .btn:disabled { opacity: .4; cursor: not-allowed; }
+    .btn-coral  { background: var(--coral); color: #fff; }
+    .btn-coral:hover:not(:disabled) { opacity: .88; }
+    .btn-ghost  {
+      background: transparent; color: var(--white);
+      border: 1px solid rgba(255,255,255,0.25);
+    }
+    .btn-ghost:hover { border-color: rgba(255,255,255,.55); }
+
+    /* ── Section divider ────────────────────────────────────────────────── */
+    hr.div { border: none; border-top: 1px solid rgba(255,255,255,0.07); margin: 80px 0; }
+
+    /* ── Form section ───────────────────────────────────────────────────── */
+    .form-head { margin-bottom: 40px; }
+    .form-head .section-label {
+      font-size: 13px; font-weight: 500; color: var(--ash);
+      letter-spacing: .06em; text-transform: uppercase; margin-bottom: 12px;
+    }
+    .form-head h2 {
+      font-family: var(--font-d); font-size: clamp(32px, 4vw, 51px);
+      font-weight: 500; line-height: 1.05; letter-spacing: -0.03em;
+      margin-bottom: 12px;
+    }
+    .form-head p { font-size: 18px; color: var(--ash); letter-spacing: -0.01em; }
+
+    /* ── Card ───────────────────────────────────────────────────────────── */
+    .card {
+      background: var(--card); border: 1px solid rgba(255,255,255,0.07);
+      border-radius: var(--r-card); padding: 32px;
+    }
+
+    /* ── Step label ─────────────────────────────────────────────────────── */
+    .step-label {
+      font-size: 12px; font-weight: 600; color: var(--ash);
+      letter-spacing: .07em; text-transform: uppercase;
+      padding-bottom: 16px; margin-bottom: 20px;
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+      display: flex; align-items: center; gap: 10px;
+    }
+    .step-num {
+      width: 22px; height: 22px; border-radius: 50%;
+      background: rgba(249,77,30,.15); border: 1px solid rgba(249,77,30,.3);
+      color: var(--coral); font-size: 11px; font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+
+    /* ── Form grid ──────────────────────────────────────────────────────── */
+    .fg-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+    .fg-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+
+    label.field-label {
+      display: block; font-size: 14px; font-weight: 500;
+      color: var(--white); margin-bottom: 8px; letter-spacing: -0.01em;
+    }
+
+    .sel-wrap { position: relative; }
+    .sel-wrap::after {
+      content: '↓'; position: absolute; right: 14px; top: 50%;
+      transform: translateY(-50%); color: var(--ash); font-size: 12px;
+      pointer-events: none;
+    }
+
+    select, input[type="number"] {
+      width: 100%;
+      background: var(--input); border: 1px solid rgba(172,174,175,.25);
+      border-radius: var(--r-card); padding: 13px 16px;
+      color: var(--white); font-family: var(--font-u);
+      font-size: 16px; letter-spacing: -0.01em;
+      appearance: none; -webkit-appearance: none;
+      outline: none; transition: border-color .15s;
+    }
+    select:focus, input[type="number"]:focus {
+      border-color: rgba(255,255,255,.35);
+    }
+    select option { background: var(--input); color: var(--white); }
+    select:disabled { opacity: .45; }
+
+    /* ── Upload zone ────────────────────────────────────────────────────── */
+    .upload-zone {
+      background: var(--input); border: 1px dashed rgba(172,174,175,.3);
+      border-radius: var(--r-card); padding: 40px 24px;
+      text-align: center; cursor: pointer;
+      transition: border-color .15s, background .15s;
+    }
+    .upload-zone:hover, .upload-zone.over {
+      border-color: var(--coral); background: rgba(249,77,30,.04);
+    }
+    .upload-icon { font-size: 32px; display: block; margin-bottom: 12px; }
+    .upload-zone p { font-size: 16px; color: var(--smoke); margin-bottom: 4px; }
+    .upload-zone .u-link { color: var(--cyan); text-decoration: underline; cursor: pointer; }
+    .upload-zone .u-cap  { font-size: 13px; color: var(--ash); }
+    .thumbs { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-top: 16px; }
+    .thumb  { width: 80px; height: 64px; object-fit: cover; border-radius: var(--r-card); border: 1px solid rgba(255,255,255,.1); }
+
+    /* ── Submit row ─────────────────────────────────────────────────────── */
+    .submit-row {
+      display: flex; align-items: center; gap: 20px;
+      margin-top: 28px; padding-top: 28px;
+      border-top: 1px solid rgba(255,255,255,.07);
+    }
+    .submit-hint { font-size: 14px; color: var(--ash); letter-spacing: -0.01em; }
+
+    /* ── Inline error ────────────────────────────────────────────────────── */
+    .err-box {
+      background: rgba(249,77,30,.08); border: 1px solid rgba(249,77,30,.25);
+      border-radius: var(--r-card); padding: 14px 18px;
+      color: var(--white); font-size: 15px; margin-top: 16px; display: none;
+    }
+    .warn-box {
+      background: rgba(172,174,175,.07); border: 1px solid rgba(172,174,175,.15);
+      border-radius: var(--r-card); padding: 12px 16px;
+      color: var(--smoke); font-size: 14px; margin-bottom: 24px; display: none;
+    }
+
+    /* ── Loading ────────────────────────────────────────────────────────── */
+    #loadingSection { display: none; }
+    .loading-wrap { text-align: center; padding: 80px 0; }
+    .spinner {
+      width: 36px; height: 36px; border-radius: 50%;
+      border: 2px solid rgba(255,255,255,.08);
+      border-top-color: var(--coral);
+      animation: spin .75s linear infinite;
+      margin: 0 auto 20px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-step { font-size: 16px; color: var(--smoke); letter-spacing: -0.01em; }
+
+    /* ── Results ────────────────────────────────────────────────────────── */
+    #resultsSection { display: none; padding-bottom: 96px; }
+
+    .result-hero {
+      text-align: center; padding: 56px 0 48px;
+    }
+    .result-label {
+      font-size: 13px; font-weight: 500; color: var(--ash);
+      letter-spacing: .06em; text-transform: uppercase; margin-bottom: 16px;
+    }
+    .result-price {
+      font-family: var(--font-d); font-weight: 500;
+      font-size: clamp(56px, 10vw, 80px);
+      line-height: 1; letter-spacing: -0.04em;
+      margin-bottom: 20px;
+    }
+    .result-badges { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; }
+    .badge {
+      background: var(--card); border: 1px solid rgba(255,255,255,.09);
+      color: var(--smoke); font-size: 13px; font-weight: 500;
+      padding: 5px 14px; border-radius: var(--r-badge);
+    }
+    .badge-coral { border-color: rgba(249,77,30,.35); color: var(--coral); }
+    .result-formula { font-size: 15px; color: var(--ash); letter-spacing: -0.01em; }
+    .result-formula em { color: var(--white); font-style: normal; font-weight: 500; }
+
+    /* ── Tabs ───────────────────────────────────────────────────────────── */
+    .tabs-nav {
+      display: flex; border-bottom: 1px solid rgba(255,255,255,.07);
+      margin-bottom: 28px;
+    }
+    .tab-btn {
+      background: none; border: none; border-bottom: 2px solid transparent;
+      color: var(--ash); font-family: var(--font-u); font-size: 14px;
+      font-weight: 500; letter-spacing: -0.01em; padding: 12px 20px;
+      cursor: pointer; margin-bottom: -1px; transition: color .15s, border-color .15s;
+    }
+    .tab-btn:hover { color: var(--smoke); }
+    .tab-btn.active { color: var(--white); border-bottom-color: var(--coral); }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* ── Chart ──────────────────────────────────────────────────────────── */
+    canvas#chart {
+      width: 100%; height: auto; display: block;
+      border-radius: var(--r-card); margin-bottom: 0;
+    }
+
+    /* ── Listings table ─────────────────────────────────────────────────── */
+    .tbl-wrap { border-radius: var(--r-card); overflow: hidden; border: 1px solid rgba(255,255,255,.07); }
+    table.listings { width: 100%; border-collapse: collapse; font-size: 14px; }
+    table.listings th {
+      background: var(--card); padding: 12px 16px; text-align: left;
+      font-size: 12px; font-weight: 600; color: var(--ash);
+      letter-spacing: .05em; text-transform: uppercase;
+      border-bottom: 1px solid rgba(255,255,255,.07);
+    }
+    table.listings td {
+      padding: 13px 16px; color: var(--white);
+      border-bottom: 1px solid rgba(255,255,255,.04);
+    }
+    table.listings tr:last-child td { border-bottom: none; }
+    table.listings tbody tr:hover td { background: rgba(255,255,255,.02); }
+
+    /* ── Analysis ───────────────────────────────────────────────────────── */
+    .analysis-grid { display: grid; grid-template-columns: 1fr 1.1fr; gap: 32px; }
+    .a-imgs { display: flex; flex-direction: column; gap: 8px; }
+    .a-img  { width: 100%; border-radius: var(--r-card); border: 1px solid rgba(255,255,255,.08); object-fit: cover; }
+    .a-key  { font-size: 12px; font-weight: 600; color: var(--ash); letter-spacing: .06em; text-transform: uppercase; margin-bottom: 6px; }
+    .a-val  { font-size: 22px; font-weight: 600; color: var(--white); letter-spacing: -0.02em; margin-bottom: 24px; }
+    .score-track {
+      background: var(--input); border-radius: var(--r-pill); height: 5px;
+      margin: 8px 0 24px; overflow: hidden;
+    }
+    .score-fill {
+      height: 100%; background: var(--coral); border-radius: var(--r-pill);
+      transition: width .6s ease;
+    }
+    .a-reasoning { font-size: 15px; color: var(--smoke); line-height: 1.65; letter-spacing: -0.01em; margin-bottom: 24px; }
+    .defect { display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,.05); font-size: 14px; color: var(--smoke); }
+    .defect:last-child { border-bottom: none; }
+    .defect-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--coral); margin-top: 7px; flex-shrink: 0; }
+    .no-defects { font-size: 14px; color: var(--ash); }
+
+    /* ── Reset btn ──────────────────────────────────────────────────────── */
+    .reset-row { text-align: center; margin-top: 56px; }
+
+    /* ── Responsive ─────────────────────────────────────────────────────── */
+    @media (max-width: 680px) {
+      .fg-2, .fg-3 { grid-template-columns: 1fr; }
+      .analysis-grid { grid-template-columns: 1fr; }
+      .submit-row { flex-direction: column; align-items: flex-start; }
+      .hero h1 { font-size: 48px; }
+      .result-price { font-size: 52px; }
+      .card { padding: 20px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-inner">
+    <a href="/" class="nav-logo">AutoCurve</a>
+    <span class="nav-pill">Powered by AI</span>
+  </div>
+</nav>
+
+<!-- HERO -->
+<div class="page">
+  <div class="hero">
+    <span class="eyebrow">70 000+ listings · Market regression · AI vision scoring</span>
+    <h1>Know what your<br>car is worth.</h1>
+    <p class="hero-sub">Upload a few photos, enter the details, and get a data-driven price estimate adjusted for real visual condition — in seconds.</p>
+    <div class="hero-btns">
+      <a href="#estimator" class="btn btn-coral">Get Estimate →</a>
+      <a href="#estimator" class="btn btn-ghost">How it works</a>
+    </div>
+  </div>
+
+  <hr class="div" style="margin-top:0">
+
+  <!-- FORM -->
+  <div id="estimator" style="padding-bottom:96px">
+    <div class="form-head">
+      <p class="section-label">Valuation Tool</p>
+      <h2>Get your estimate.</h2>
+      <p>Two inputs. One honest number.</p>
+    </div>
+
+    <div class="card" id="formCard">
+
+      <!-- Step 1 -->
+      <div class="step-label"><span class="step-num">1</span>Vehicle Details</div>
+
+      <div class="fg-2">
+        <div>
+          <label class="field-label" for="makeSelect">Manufacturer</label>
+          <div class="sel-wrap">
+            <select id="makeSelect"><option value="">Loading…</option></select>
+          </div>
+        </div>
+        <div>
+          <label class="field-label" for="modelSelect">Model</label>
+          <div class="sel-wrap">
+            <select id="modelSelect" disabled><option value="">Select make first</option></select>
+          </div>
+        </div>
+      </div>
+
+      <div class="fg-2">
+        <div>
+          <label class="field-label" for="yearInput">Year</label>
+          <input type="number" id="yearInput" min="1980" max="2026" value="2018">
+        </div>
+        <div>
+          <label class="field-label" for="odoInput">Odometer (miles)</label>
+          <input type="number" id="odoInput" min="0" max="999999" value="80000" step="1000">
+        </div>
+      </div>
+
+      <div class="fg-3">
+        <div>
+          <label class="field-label" for="fuelSel">Fuel Type</label>
+          <div class="sel-wrap">
+            <select id="fuelSel" disabled><option value="">Any</option></select>
+          </div>
+        </div>
+        <div>
+          <label class="field-label" for="transSel">Transmission</label>
+          <div class="sel-wrap">
+            <select id="transSel" disabled><option value="">Any</option></select>
+          </div>
+        </div>
+        <div>
+          <label class="field-label" for="driveSel">Drive Type</label>
+          <div class="sel-wrap">
+            <select id="driveSel" disabled><option value="">Any</option></select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 2 -->
+      <div class="step-label" style="margin-top:8px"><span class="step-num">2</span>Vehicle Photos</div>
+
+      <input type="file" id="imgInput" accept="image/jpeg,image/png,image/webp" multiple hidden>
+      <div class="upload-zone" id="dropZone">
+        <span class="upload-icon">📷</span>
+        <p>Drop photos here or <span class="u-link" id="browseLink">browse files</span></p>
+        <p class="u-cap">1 – 4 images · JPG, PNG · Clear shots improve accuracy</p>
+        <div class="thumbs" id="thumbs"></div>
+      </div>
+
+      <div class="submit-row">
+        <button class="btn btn-coral" id="submitBtn" onclick="submitValuation()">Estimate Value →</button>
+        <span class="submit-hint" id="hint">Upload at least one photo to continue.</span>
+      </div>
+
+      <div class="err-box" id="formErr"></div>
+    </div>
+  </div>
+
+  <!-- LOADING -->
+  <div id="loadingSection">
+    <div class="loading-wrap">
+      <div class="spinner"></div>
+      <p class="loading-step" id="loadStep">Searching market data…</p>
+    </div>
+  </div>
+
+  <!-- RESULTS -->
+  <div id="resultsSection">
+    <hr class="div" style="margin-top:0">
+
+    <!-- Price hero -->
+    <div class="result-hero">
+      <p class="result-label">Estimated Market Value</p>
+      <div class="result-price" id="rPrice">—</div>
+      <div class="result-badges">
+        <span class="badge badge-coral" id="rCondition">—</span>
+        <span class="badge" id="rScore">Score —</span>
+        <span class="badge" id="rCount">— listings</span>
+      </div>
+      <p class="result-formula" id="rFormula"></p>
+    </div>
+
+    <div class="warn-box" id="apiWarn"></div>
+
+    <!-- Tabs -->
+    <div class="tabs-nav">
+      <button class="tab-btn active" data-tab="market">Market Graph</button>
+      <button class="tab-btn" data-tab="analysis">AI Analysis</button>
+      <button class="tab-btn" data-tab="listings">Comparable Listings</button>
+    </div>
+
+    <div class="tab-panel active" id="tab-market">
+      <canvas id="chart" width="1152" height="460"></canvas>
+    </div>
+
+    <div class="tab-panel" id="tab-analysis">
+      <div class="analysis-grid">
+        <div class="a-imgs" id="aImgs"></div>
+        <div>
+          <p class="a-key">Condition</p>
+          <p class="a-val" id="aCond">—</p>
+
+          <p class="a-key">Condition Score</p>
+          <div class="score-track"><div class="score-fill" id="aFill" style="width:0"></div></div>
+
+          <p class="a-key" style="margin-bottom:8px">AI Reasoning</p>
+          <p class="a-reasoning" id="aReasoning">—</p>
+
+          <p class="a-key" style="margin-bottom:8px">Visible Defects</p>
+          <div id="aDefects"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="tab-listings">
+      <div class="tbl-wrap">
+        <table class="listings">
+          <thead>
+            <tr>
+              <th>Year</th><th>Odometer</th><th>Price</th>
+              <th>Condition</th><th>Fuel</th><th>Trans.</th>
+            </tr>
+          </thead>
+          <tbody id="tblBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="reset-row">
+      <button class="btn btn-ghost" onclick="resetForm()">← New Estimate</button>
+    </div>
+  </div>
+</div><!-- /page -->
+
+<script>
+// ── State ─────────────────────────────────────────────────────────────────────
+const S = { files: [], urls: [], results: null };
+
+// ── Element refs ──────────────────────────────────────────────────────────────
+const $  = id => document.getElementById(id);
+const makeEl  = $('makeSelect'), modelEl = $('modelSelect');
+const yearEl  = $('yearInput'),  odoEl   = $('odoInput');
+const fuelEl  = $('fuelSel'),    transEl = $('transSel'), driveEl = $('driveSel');
+const imgEl   = $('imgInput'),   dropEl  = $('dropZone'), thumbsEl = $('thumbs');
+const hintEl  = $('hint'),       errEl   = $('formErr'), submitEl = $('submitBtn');
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+(async function init() {
+  try {
+    const { makes } = await api('/api/makes');
+    makeEl.innerHTML = opt('', 'Select make…') +
+      makes.map(m => opt(m, cap(m))).join('');
+  } catch {
+    makeEl.innerHTML = opt('', 'Server not reachable');
+  }
+  refreshHint();
+})();
+
+// ── Make → Model cascade ──────────────────────────────────────────────────────
+makeEl.addEventListener('change', async () => {
+  const make = makeEl.value;
+  modelEl.disabled = true;
+  modelEl.innerHTML = opt('', 'Loading…');
+  resetOptionals();
+  if (!make) { refreshHint(); return; }
+
+  try {
+    const { models } = await api(`/api/models?make=${enc(make)}`);
+    modelEl.innerHTML = opt('', 'Select model…') + models.map(m => opt(m, cap(m))).join('');
+    modelEl.disabled = false;
+  } catch {
+    modelEl.innerHTML = opt('', 'Failed to load models');
+  }
+  refreshHint();
+});
+
+modelEl.addEventListener('change', async () => {
+  const make = makeEl.value, model = modelEl.value;
+  resetOptionals();
+  if (!make || !model) { refreshHint(); return; }
+
+  try {
+    const opts = await api(`/api/options?make=${enc(make)}&model=${enc(model)}`);
+    fillSel(fuelEl,  opts.fuel,         'fuel type');
+    fillSel(transEl, opts.transmission, 'transmission');
+    fillSel(driveEl, opts.drive,        'drive type');
+  } catch {}
+  refreshHint();
+});
+
+function fillSel(el, vals, label) {
+  el.innerHTML = opt('', `Any ${label}`) + vals.map(v => opt(v, cap(v))).join('');
+  el.disabled = vals.length === 0;
+}
+function resetOptionals() {
+  [fuelEl, transEl, driveEl].forEach(el => {
+    el.innerHTML = opt('', 'Any'); el.disabled = true;
+  });
+}
+
+// ── Image upload ──────────────────────────────────────────────────────────────
+$('browseLink').addEventListener('click', e => { e.stopPropagation(); imgEl.click(); });
+dropEl.addEventListener('click', () => imgEl.click());
+dropEl.addEventListener('dragover',  e => { e.preventDefault(); dropEl.classList.add('over'); });
+dropEl.addEventListener('dragleave', () => dropEl.classList.remove('over'));
+dropEl.addEventListener('drop', e => {
+  e.preventDefault(); dropEl.classList.remove('over');
+  handleFiles([...e.dataTransfer.files]);
+});
+imgEl.addEventListener('change', () => handleFiles([...imgEl.files]));
+
+function handleFiles(files) {
+  S.urls.forEach(URL.revokeObjectURL);
+  S.files = files.filter(f => f.type.startsWith('image/')).slice(0, 4);
+  S.urls  = S.files.map(URL.createObjectURL);
+  thumbsEl.innerHTML = S.urls.map(u => `<img class="thumb" src="${u}">`).join('');
+  refreshHint();
+}
+
+// ── Hint ──────────────────────────────────────────────────────────────────────
+function refreshHint() {
+  const issues = [];
+  if (!makeEl.value)  issues.push('select a make');
+  if (!modelEl.value) issues.push('select a model');
+  if (!S.files.length) issues.push('upload at least one photo');
+  hintEl.textContent = issues.length
+    ? 'To continue: ' + issues.join(', ') + '.'
+    : 'Ready — click to get your estimate.';
+}
+
+// ── Submit ────────────────────────────────────────────────────────────────────
+async function submitValuation() {
+  hideErr();
+  const make  = makeEl.value, model = modelEl.value;
+  const year  = parseInt(yearEl.value), odo = parseInt(odoEl.value);
+
+  if (!make)                          return showErr('Please select a manufacturer.');
+  if (!model)                         return showErr('Please select a model.');
+  if (!year || year < 1980 || year > 2026) return showErr('Year must be between 1980 and 2026.');
+  if (isNaN(odo) || odo < 0)          return showErr('Enter a valid odometer reading.');
+  if (!S.files.length)                return showErr('Upload at least one vehicle photo.');
+
+  const fd = new FormData();
+  fd.append('make', make); fd.append('model', model);
+  fd.append('year', year); fd.append('odometer', odo);
+  if (fuelEl.value)  fd.append('fuel', fuelEl.value);
+  if (transEl.value) fd.append('transmission', transEl.value);
+  if (driveEl.value) fd.append('drive', driveEl.value);
+  S.files.forEach(f => fd.append('images', f, f.name));
+
+  // Show loading
+  $('formCard').style.display = 'none';
+  $('loadingSection').style.display = 'block';
+  $('resultsSection').style.display = 'none';
+
+  const steps = [
+    'Searching market data…',
+    'Running regression model…',
+    'Scoring visual condition with AI…',
+    'Calculating adjusted estimate…',
+  ];
+  let si = 0;
+  const stepEl = $('loadStep');
+  stepEl.textContent = steps[0];
+  const ticker = setInterval(() => { stepEl.textContent = steps[si = (si+1) % steps.length]; }, 2000);
+
+  try {
+    const res  = await fetch('/api/valuation', { method: 'POST', body: fd });
+    const data = await res.json();
+    clearInterval(ticker);
+
+    if (!res.ok) throw new Error(data.detail || 'Valuation failed.');
+
+    S.results = data;
+    renderResults(data);
+    $('loadingSection').style.display = 'none';
+    $('resultsSection').style.display = 'block';
+    $('resultsSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  } catch (e) {
+    clearInterval(ticker);
+    $('loadingSection').style.display = 'none';
+    $('formCard').style.display = 'block';
+    showErr(e.message || 'Something went wrong. Is the server running?');
+  }
+}
+
+// ── Render results ────────────────────────────────────────────────────────────
+function renderResults(d) {
+  $('rPrice').textContent    = money(d.final_price);
+  $('rCondition').textContent = cap(d.condition);
+  $('rScore').textContent    = `${d.condition_score.toFixed(2)}× condition`;
+  $('rCount').textContent    = `${d.comparable_count} listings`;
+  $('rFormula').innerHTML    =
+    `<em>${money(d.base_price)}</em> base &times; <em>${d.condition_score.toFixed(2)}</em> condition = <em>${money(d.final_price)}</em>`;
+
+  // API warning
+  const warnEl = $('apiWarn');
+  if (d.api_error === 'rate_limited') {
+    warnEl.textContent = `AI scoring hit the rate limit — condition score defaulted to 1.0 (neutral). Retry in ${d.retry_after || '?'}s.`;
+    warnEl.style.display = 'block';
+  } else if (d.api_error === 'api_failure') {
+    warnEl.textContent = 'AI condition scoring failed — defaulted to 1.0 (neutral).';
+    warnEl.style.display = 'block';
+  } else {
+    warnEl.style.display = 'none';
+  }
+
+  // Analysis — images from local state (no re-download)
+  $('aImgs').innerHTML = S.urls.map(u => `<img class="a-img" src="${u}">`).join('');
+  $('aCond').textContent = cap(d.condition);
+
+  const pct = Math.round(((d.condition_score - 0.4) / 1.0) * 100);
+  $('aFill').style.width = Math.max(0, Math.min(100, pct)) + '%';
+
+  $('aReasoning').textContent = d.reasoning || 'No reasoning provided.';
+
+  const defEl = $('aDefects');
+  if (d.visible_defects?.length) {
+    defEl.innerHTML = d.visible_defects
+      .map(t => `<div class="defect"><span class="defect-dot"></span>${t}</div>`)
+      .join('');
+  } else {
+    defEl.innerHTML = '<p class="no-defects">No visible defects noted.</p>';
+  }
+
+  // Listings table
+  $('tblBody').innerHTML = (d.comparable_listings || []).map(r => `
+    <tr>
+      <td>${r.year || '—'}</td>
+      <td>${r.odometer != null ? Number(r.odometer).toLocaleString() : '—'}</td>
+      <td>${r.price != null ? money(r.price) : '—'}</td>
+      <td>${cap(r.condition || '—')}</td>
+      <td>${cap(r.fuel || '—')}</td>
+      <td>${cap(r.transmission || '—')}</td>
+    </tr>`).join('');
+
+  // Chart
+  requestAnimationFrame(() =>
+    drawChart(d.market_data, parseInt(odoEl.value), d.final_price));
+}
+
+// ── Market chart (canvas) ─────────────────────────────────────────────────────
+function drawChart(data, userOdo, userPrice) {
+  const cv  = $('chart'), ctx = cv.getContext('2d');
+  const W = cv.width, H = cv.height;
+  const P = { t: 28, r: 28, b: 56, l: 76 };
+  const cW = W - P.l - P.r, cH = H - P.t - P.b;
+
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#121719';
+  ctx.fillRect(0, 0, W, H);
+
+  if (!data?.length) {
+    ctx.fillStyle = '#909394'; ctx.font = '14px Inter,sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('No market data', W/2, H/2); return;
+  }
+
+  const pts = data.filter(d => d.odometer >= 0 && d.price > 0);
+  if (!pts.length) return;
+
+  const xs = pts.map(d => d.odometer), ys = pts.map(d => d.price);
+  const x0 = Math.min(...xs), x1 = Math.max(...xs);
+  const y0 = Math.min(...ys), y1 = Math.max(...ys);
+  const rx = x1-x0 || 1, ry = y1-y0 || 1;
+
+  const sx = v => P.l + ((v-x0)/rx)*cW;
+  const sy = v => P.t + cH - ((v-y0)/ry)*cH;
+
+  // Grid
+  ctx.strokeStyle = 'rgba(255,255,255,0.05)'; ctx.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) {
+    const y = P.t + (cH/4)*i;
+    ctx.beginPath(); ctx.moveTo(P.l, y); ctx.lineTo(W-P.r, y); ctx.stroke();
+  }
+
+  // Axes
+  ctx.strokeStyle = 'rgba(255,255,255,0.1)'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(P.l, P.t); ctx.lineTo(P.l, P.t+cH); ctx.lineTo(P.l+cW, P.t+cH); ctx.stroke();
+
+  // Labels
+  ctx.fillStyle = '#909394'; ctx.font = '11px Inter,sans-serif';
+  ctx.textAlign = 'right';
+  for (let i = 0; i <= 4; i++) {
+    const v = y0 + (ry/4)*(4-i), y = P.t + (cH/4)*i;
+    ctx.fillText('$' + Math.round(v/1000) + 'k', P.l-8, y+4);
+  }
+  ctx.textAlign = 'center';
+  for (let i = 0; i <= 4; i++) {
+    const v = x0 + (rx/4)*i, x = P.l + (cW/4)*i;
+    ctx.fillText(Math.round(v/1000)+'k mi', x, P.t+cH+18);
+  }
+  ctx.fillText('Odometer (miles)', P.l+cW/2, H-6);
+
+  // Dots
+  ctx.fillStyle = 'rgba(255,255,255,0.2)';
+  for (const p of pts) {
+    ctx.beginPath(); ctx.arc(sx(p.odometer), sy(p.price), 2.5, 0, Math.PI*2); ctx.fill();
+  }
+
+  // OLS trendline
+  const n = pts.length;
+  const Sx  = pts.reduce((s,p)=>s+p.odometer, 0);
+  const Sy  = pts.reduce((s,p)=>s+p.price, 0);
+  const Sxy = pts.reduce((s,p)=>s+p.odometer*p.price, 0);
+  const Sx2 = pts.reduce((s,p)=>s+p.odometer*p.odometer, 0);
+  const det = n*Sx2 - Sx*Sx;
+  if (Math.abs(det) > 1e-9) {
+    const m = (n*Sxy - Sx*Sy)/det, b = (Sy - m*Sx)/n;
+    ctx.strokeStyle = 'rgba(249,77,30,0.55)'; ctx.lineWidth = 2;
+    ctx.setLineDash([6,4]);
+    ctx.beginPath(); ctx.moveTo(sx(x0), sy(m*x0+b)); ctx.lineTo(sx(x1), sy(m*x1+b)); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // User vehicle dot
+  if (userOdo >= x0 && userOdo <= x1) {
+    const ux = sx(userOdo), uy = sy(Math.max(y0, Math.min(y1, userPrice)));
+    ctx.beginPath(); ctx.arc(ux, uy, 11, 0, Math.PI*2);
+    ctx.fillStyle = 'rgba(249,77,30,0.15)'; ctx.fill();
+    ctx.beginPath(); ctx.arc(ux, uy, 5, 0, Math.PI*2);
+    ctx.fillStyle = '#f94d1e'; ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.font = '500 12px Inter,sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('Your vehicle', ux, uy-16);
+  }
+}
+
+// ── Tabs ──────────────────────────────────────────────────────────────────────
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    $('tab-' + btn.dataset.tab).classList.add('active');
+    if (btn.dataset.tab === 'market' && S.results)
+      requestAnimationFrame(() => drawChart(S.results.market_data, parseInt(odoEl.value), S.results.final_price));
+  });
+});
+
+// ── Reset ─────────────────────────────────────────────────────────────────────
+function resetForm() {
+  $('resultsSection').style.display = 'none';
+  $('formCard').style.display = 'block';
+  S.urls.forEach(URL.revokeObjectURL); S.files = []; S.urls = [];
+  thumbsEl.innerHTML = ''; imgEl.value = '';
+  $('apiWarn').style.display = 'none';
+  refreshHint();
+  $('formCard').scrollIntoView({ behavior: 'smooth' });
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function money(n) { return new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0}).format(n); }
+function cap(s)   { return s ? s.charAt(0).toUpperCase() + s.slice(1) : ''; }
+function enc(s)   { return encodeURIComponent(s); }
+function opt(v,l) { return `<option value="${v}">${l}</option>`; }
+async function api(url) { const r = await fetch(url); if (!r.ok) throw new Error(); return r.json(); }
+
+function showErr(msg) { errEl.textContent = msg; errEl.style.display = 'block'; }
+function hideErr()    { errEl.style.display = 'none'; }
+</script>
+</body>
+</html>

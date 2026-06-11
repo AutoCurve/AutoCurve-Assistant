@@ -1,0 +1,218 @@
+# AutoCurve — AI-Powered Car Valuation
+
+AutoCurve estimates the fair market value of a used vehicle by combining **regression on 70 000+ real listings** with **AI-based visual condition scoring** from uploaded photos.
+
+---
+
+## Problem It Solves
+
+Used-car buyers and sellers struggle to price vehicles accurately. Published guides ignore individual vehicle condition; dealers have information advantages. AutoCurve closes that gap by blending market data with objective, image-based condition assessment — giving anyone a data-driven, photo-backed price estimate in seconds.
+
+---
+
+## Features
+
+- Market regression across 70 000+ Craigslist USA listings
+- Per-make/model linear regression on year and odometer
+- Optional filtering by fuel type, transmission, and drive
+- AI visual condition scoring via OpenRouter (Gemini model) — multiplier clamped to 0.4–1.4×
+- Step-by-step UI with market scatter plot, comparable listings, and image analysis breakdown
+- Community discussion search (Reddit) via DuckDuckGo
+- API rate limiting (token bucket, 15 req/min)
+- Full input validation and graceful API-failure handling
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Frontend | Streamlit |
+| Backend / ML | Python, scikit-learn, pandas |
+| AI Vision | OpenRouter API (Gemini / multimodal LLM) |
+| Plotting | Plotly |
+| Data | Craigslist used-car dataset (Excel) |
+| Testing | pytest |
+
+---
+
+## Architecture / Workflow
+
+```
+User Input (make, model, year, odometer, images)
+        │
+        ▼
+┌──────────────────────────────────────────────────┐
+│  Step 3 — Base Price Estimation                  │
+│  • Filter dataset to matching make + model       │
+│  • Linear Regression on year  → year_price       │
+│  • Linear Regression on odo   → odo_price        │
+│  • Nearest-neighbour cat match → cat_price       │
+│  • Condition-category match   → condition_price  │
+│  • Weighted average → base_price                 │
+└──────────────────────────────────────────────────┘
+        │
+        ▼
+┌──────────────────────────────────────────────────┐
+│  Step 4 — Visual Condition Scoring               │
+│  • Upload images → OpenRouter multimodal API     │
+│  • Returns condition label + score [0.4, 1.4]    │
+│  • Score clamped server-side regardless of API   │
+└──────────────────────────────────────────────────┘
+        │
+        ▼
+  final_price = base_price × condition_score
+```
+
+---
+
+## ML Approach
+
+The valuation model uses per-query regression rather than a single global model:
+
+1. Filter listings to the exact make + model.
+2. Fit `LinearRegression(year → price)` and `LinearRegression(odometer → price)` on that subset.
+3. Find nearest listings by odometer matching the optional categorical filters (fuel, transmission, drive) and by reported condition.
+4. Combine with weights: **35% odometer regression, 30% year regression, 25% condition-category match, 15% categorical match**.
+5. Multiply by the AI condition score.
+
+For portfolio/resume evaluation a global Linear Regression (with one-hot encoding) is trained separately — see [Model Metrics](#model-metrics).
+
+---
+
+## Image Condition Scoring
+
+Uploaded photos (up to 4) are sent to a multimodal LLM via OpenRouter. The model classifies the vehicle as one of: `new`, `like new`, `excellent`, `good`, `fair`, `salvage`, and returns a `condition_score` in [0.4, 1.4]:
+
+| Condition | Score range |
+|---|---|
+| new | 1.3 – 1.4 |
+| like new | 1.2 – 1.3 |
+| excellent | 1.1 – 1.2 |
+| good | 0.9 – 1.0 |
+| fair | 0.7 – 0.8 |
+| salvage | 0.4 – 0.6 |
+
+The score is **always clamped** to [0.4, 1.4] in `backend.py` regardless of what the API returns. On API failure the score defaults to 1.0 (neutral) and the user is warned.
+
+---
+
+## Model Metrics
+
+Evaluated on a global Linear Regression (80/20 split, 52 991 cleaned records):
+
+| Metric | Value |
+|---|---|
+| MAE | **$3,077** |
+| RMSE | **$5,198** |
+| R² | **0.84** |
+| Train size | 42,392 records (80%) |
+| Test size | 10,599 records (20%) |
+
+See [`MODEL_METRICS.md`](MODEL_METRICS.md) for full detail and [`evaluate_model.py`](evaluate_model.py) to reproduce.
+
+---
+
+## Setup
+
+### Prerequisites
+- Python 3.10+
+- An [OpenRouter](https://openrouter.ai/) API key
+
+### Install
+
+```bash
+git clone <repo-url>
+cd AutoCurve
+pip install -r requirements.txt
+```
+
+### Environment Variables
+
+```bash
+cp .env.example .env
+# Edit .env and set OPENROUTER_API_KEY
+```
+
+| Variable | Required | Description |
+|---|---|---|
+| `OPENROUTER_API_KEY` | ✅ | Your OpenRouter API key |
+| `OPENROUTER_MODEL_ID` | ❌ | Vision model to use (default: `google/gemma-3-12b-it:free`) |
+
+---
+
+## Running the App
+
+```bash
+uvicorn api:app --reload
+```
+
+Open `http://localhost:8000` in your browser.
+
+> The old Streamlit UI is still available at `frontend.py` (`streamlit run frontend.py`) but the FastAPI + HTML frontend is the primary interface.
+
+---
+
+## Running Tests
+
+```bash
+pytest tests/ -v
+```
+
+24 tests covering: condition score clamping, valuation model inputs/outputs, API failure handling, data loading and cleaning.
+
+---
+
+## Reproducing Model Metrics
+
+```bash
+python evaluate_model.py
+```
+
+This re-trains and re-evaluates the global model and overwrites `MODEL_METRICS.md`.
+
+---
+
+## Deployment
+
+### Streamlit Community Cloud (recommended — free)
+
+1. Push the repo to GitHub (ensure `.env` is in `.gitignore`).
+2. Go to [share.streamlit.io](https://share.streamlit.io) → **New app**.
+3. Select your repo, set **Main file path** to `frontend.py`.
+4. Add `OPENROUTER_API_KEY` under **Advanced settings → Secrets** (TOML format):
+   ```toml
+   OPENROUTER_API_KEY = "sk-or-..."
+   ```
+5. Click **Deploy**.
+
+### Render / Railway
+
+1. Create a new **Web Service** pointing to the repo.
+2. Build command: `pip install -r requirements.txt`
+3. Start command: `streamlit run frontend.py --server.port $PORT --server.address 0.0.0.0`
+4. Set `OPENROUTER_API_KEY` as an environment variable in the dashboard.
+
+### Important before deploying
+- Confirm `database.xlsx` is committed (it is not a secret).
+- Confirm `.env` is in `.gitignore` ✅ — secrets go in the platform dashboard only.
+
+---
+
+## Limitations
+
+- Dataset is USA Craigslist listings only; international pricing not covered.
+- Listing prices are asking prices, not final sale prices.
+- Sparse data for rare makes/models degrades estimates.
+- AI condition scoring accuracy depends on image quality and lighting.
+- Rate limiter (15 req/min) is in-process — not shared across multiple server instances.
+
+---
+
+## Future Improvements
+
+- VIN lookup for trim/options/accident history
+- Regional price adjustment by ZIP code
+- Gradient-boosted tree model (XGBoost) for non-linear feature interactions
+- Verified sale prices instead of listing prices
+- Redis-backed distributed rate limiter for multi-instance deployments
