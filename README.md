@@ -1,6 +1,6 @@
 # AutoCurve — AI-Powered Car Valuation
 
-AutoCurve estimates the fair market value of a used vehicle by combining **regression on 40000+ real listings** with **AI-based visual condition scoring** from uploaded photos.
+AutoCurve estimates the fair market value of a used vehicle by combining **regression on 52000+ real listings** with **AI-based visual condition scoring** from uploaded photos.
 
 ---
 
@@ -12,7 +12,7 @@ Used-car buyers and sellers struggle to price vehicles accurately. Published gui
 
 ## Features
 
-- Market regression across 70 000+ Craigslist USA listings
+- Market regression across 52000+ Craigslist USA listings
 - Per-make/model linear regression on year and odometer
 - Optional filtering by fuel type, transmission, and drive
 - AI visual condition scoring via OpenRouter (Gemma 4 multimodal LLM) — multiplier clamped to 0.4–1.4×
