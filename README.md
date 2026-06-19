@@ -1,298 +1,221 @@
-# AutoCurve Assistant
+# AutoCurve — AI-Powered Car Valuation
 
-AutoCurve Assistant is a Streamlit-based vehicle valuation tool that combines historical market data, statistical price estimation, image-based condition analysis, and online discussion lookup to estimate the value range of a used vehicle.
+AutoCurve estimates the fair market value of a used vehicle by combining **regression on 40000+ real listings** with **AI-based visual condition scoring** from uploaded photos.
 
-The project is designed to help users get a more informed used-car estimate by considering both structured vehicle details, such as make, model, year, odometer, fuel type, transmission, and drivetrain, and unstructured vehicle images that are analyzed by an AI vision model.
+---
 
-# Contributors 
+## Problem It Solves
 
-- [Yuvraj Chahal](https://github.com/yuvrajchahal22)
-- [Karanveeer Singh](https://github.com/ksxngh)
-- Jastej Sandhu
+Used-car buyers and sellers struggle to price vehicles accurately. Published guides ignore individual vehicle condition; dealers have information advantages. AutoCurve closes that gap by blending market data with objective, image-based condition assessment — giving anyone a data-driven, photo-backed price estimate in seconds.
 
-## Overview
-
-Used vehicle pricing is often inconsistent because two vehicles with the same year and model can have very different values depending on mileage, condition, trim-related attributes, and visible wear. AutoCurve Assistant attempts to solve this by combining multiple signals into one valuation workflow.
-
-The application allows a user to:
-
-1. Select a vehicle manufacturer and model from the dataset.
-2. Enter the vehicle year and odometer reading.
-3. Choose optional filters such as fuel type, transmission, and drive type.
-4. Upload vehicle images for AI-based condition analysis.
-5. Generate an estimated vehicle value.
-6. View similar vehicles from the dataset.
-7. See a market price graph.
-8. Review online discussion snippets related to the selected vehicle.
+---
 
 ## Features
 
-- Interactive Streamlit web interface
-- Vehicle selection by manufacturer and model
-- User input for year, odometer, fuel type, transmission type, and drivetrain
-- Image upload support for vehicle condition analysis
-- AI-based condition classification using OpenRouter-compatible chat completion models
-- Condition score adjustment based on visible vehicle defects
-- Statistical valuation using historical vehicle data
-- Price trend visualization with Plotly
-- Comparable vehicle table
-- Reddit-based social proof lookup using DuckDuckGo Search
-- Simple in-process rate limiter for OpenRouter API calls
+- Market regression across 70 000+ Craigslist USA listings
+- Per-make/model linear regression on year and odometer
+- Optional filtering by fuel type, transmission, and drive
+- AI visual condition scoring via OpenRouter (Gemma 4 multimodal LLM) — multiplier clamped to 0.4–1.4×
+- Step-by-step UI with market scatter plot, comparable listings, and image analysis breakdown
+- Community discussion search (Reddit) via DuckDuckGo
+- API rate limiting (token bucket, 15 req/min)
+- Full input validation and graceful API-failure handling
+
+---
 
 ## Tech Stack
 
-- Python
-- Streamlit
-- pandas
-- scikit-learn
-- Plotly
-- Pillow
-- python-dotenv
-- OpenAI Python client with OpenRouter base URL
-- DuckDuckGo Search
+| Layer | Technology |
+|---|---|
+| Frontend | HTML + vanilla JS (Spellbook-inspired design system) |
+| Backend / API | FastAPI + Uvicorn |
+| ML | Python, scikit-learn, pandas |
+| AI Vision | OpenRouter API (Gemma 4 multimodal LLM) |
+| Data | Craigslist used-car dataset (Excel) |
+| Testing | pytest |
 
-## Project Structure
+---
 
-```text
-AutoCurve-Assistant/
-│
-├── AutoCurve/
-│   ├── backend.py
-│   ├── frontend.py
-│   ├── rate_limiter.py
-│   ├── database.xlsx
-│   └── .gitignore
-│
-├── README.md
-├── .gitattributes
-└── .DS_Store
+## Architecture / Workflow
+
+```
+User Input (make, model, year, odometer, images)
+        │
+        ▼
+┌──────────────────────────────────────────────────┐
+│  Step 3 — Base Price Estimation                  │
+│  • Filter dataset to matching make + model       │
+│  • Linear Regression on year  → year_price       │
+│  • Linear Regression on odo   → odo_price        │
+│  • Nearest-neighbour cat match → cat_price       │
+│  • Condition-category match   → condition_price  │
+│  • Weighted average → base_price                 │
+└──────────────────────────────────────────────────┘
+        │
+        ▼
+┌──────────────────────────────────────────────────┐
+│  Step 4 — Visual Condition Scoring               │
+│  • Upload images → OpenRouter multimodal API     │
+│  • Returns condition label + score [0.4, 1.4]    │
+│  • Score clamped server-side regardless of API   │
+└──────────────────────────────────────────────────┘
+        │
+        ▼
+  final_price = base_price × condition_score
 ```
 
-## How It Works
+---
 
-AutoCurve Assistant has two main parts:
+## ML Approach
 
-```text
-Frontend: Streamlit user interface
-Backend: valuation logic, image analysis, data loading, and search utilities
-```
+The valuation model uses per-query regression rather than a single global model:
 
-### 1. Data Loading
+1. Filter listings to the exact make + model.
+2. Fit `LinearRegression(year → price)` and `LinearRegression(odometer → price)` on that subset.
+3. Find nearest listings by odometer matching the optional categorical filters (fuel, transmission, drive) and by reported condition.
+4. Combine with weights: **35% odometer regression, 30% year regression, 25% condition-category match, 15% categorical match**.
+5. Multiply by the AI condition score.
 
-The backend loads the vehicle dataset from `database.xlsx` using pandas. During loading, key text columns are normalized by stripping whitespace and converting values to lowercase. This helps avoid mismatches when filtering by manufacturer, model, condition, fuel type, transmission, drive type, title status, and state.
+For portfolio/resume evaluation a global Linear Regression (with one-hot encoding) is trained separately — see [Model Metrics](#model-metrics).
 
-### 2. User Input
+---
 
-The frontend displays input controls for the user to provide vehicle details:
+## Image Condition Scoring
 
-- Manufacturer
-- Model
-- Year
-- Odometer reading
-- Fuel type
-- Transmission type
-- Drive type
-- Vehicle images
+Uploaded photos (up to 4) are sent to a multimodal LLM via OpenRouter. The model classifies the vehicle as one of: `new`, `like new`, `excellent`, `good`, `fair`, `salvage`, and returns a `condition_score` in [0.4, 1.4]:
 
-The manufacturer and model options are generated from the dataset, which prevents users from selecting vehicles that are not available in the stored data.
+| Condition | Score range |
+|---|---|
+| new | 1.3 – 1.4 |
+| like new | 1.2 – 1.3 |
+| excellent | 1.1 – 1.2 |
+| good | 0.9 – 1.0 |
+| fair | 0.7 – 0.8 |
+| salvage | 0.4 – 0.6 |
 
-### 3. Image-Based Condition Analysis
+The score is **always clamped** to [0.4, 1.4] in `backend.py` regardless of what the API returns. On API failure the score defaults to 1.0 (neutral) and the user is warned.
 
-The user uploads one or more vehicle images. The app sends up to four images to an OpenRouter-compatible vision model through the OpenAI Python client.
+---
 
-The model is prompted to classify the vehicle condition as one of:
+## Model Metrics
 
-```text
-new
-like new
-excellent
-good
-fair
-salvage
-```
+Evaluated on a global Linear Regression (80/20 split, 52 991 cleaned records):
 
-The model also returns:
+| Metric | Value |
+|---|---|
+| MAE | **$3,077** |
+| RMSE | **$5,198** |
+| R² | **0.84** |
+| Train size | 42,392 records (80%) |
+| Test size | 10,599 records (20%) |
 
-- reasoning
-- visible defects
-- condition score
+See [`MODEL_METRICS.md`](MODEL_METRICS.md) for full detail and [`evaluate_model.py`](evaluate_model.py) to reproduce.
 
-The condition score is used as a multiplier in the final valuation.
+---
 
-### 4. Vehicle Valuation
+## Setup
 
-The backend estimates vehicle value using a weighted combination of several pricing signals.
+### Prerequisites
+- Python 3.10+
+- An [OpenRouter](https://openrouter.ai/) API key
 
-The valuation logic considers:
-
-- average price for the same make and model
-- price trend based on year
-- price trend based on odometer reading
-- similar vehicles with matching fuel, transmission, and drive type
-- similar vehicles with the same condition
-- AI-generated condition score from uploaded images
-
-The final price is calculated by combining category-based price, condition-based price, year-based regression price, odometer-based regression price, and the condition multiplier.
-
-### 5. Market Visualization
-
-The app generates a Plotly scatter plot showing price versus odometer for similar vehicles. A trendline is included to help users understand how mileage relates to market price for the selected make and model.
-
-### 6. Comparable Listings
-
-The app displays a small table of similar vehicles from the dataset, including:
-
-- year
-- model
-- odometer
-- price
-- condition
-- fuel type
-- transmission
-- drive type
-
-This helps users see the examples behind the estimate instead of only seeing a single number.
-
-### 7. Online Discussion Lookup
-
-The app uses DuckDuckGo Search to look for Reddit discussions related to the selected vehicle. The query focuses on common problems and reliability for the chosen year, manufacturer, and model.
-
-This gives the user extra context beyond the dataset, such as common owner complaints or reliability discussions.
-
-## Setup Instructions
-
-### 1. Clone the Repository
+### Install
 
 ```bash
-git clone https://github.com/AutoCurve/AutoCurve-Assistant.git
-cd AutoCurve-Assistant/AutoCurve
-```
-
-### 2. Create a Virtual Environment
-
-```bash
-python -m venv venv
-source venv/bin/activate
-```
-
-On Windows:
-
-```bash
-venv\Scripts\activate
-```
-
-### 3. Install Dependencies
-
-```bash
+git clone <repo-url>
+cd AutoCurve
 pip install -r requirements.txt
 ```
 
-If a `requirements.txt` file has not been added yet, install the main dependencies manually:
+### Environment Variables
 
 ```bash
-pip install streamlit pandas scikit-learn plotly pillow python-dotenv openai duckduckgo-search openpyxl
+cp .env.example .env
+# Edit .env and set OPENROUTER_API_KEY
 ```
 
-### 4. Add Environment Variables
+| Variable | Required | Description |
+|---|---|---|
+| `OPENROUTER_API_KEY` | ✅ | Your OpenRouter API key |
+| `OPENROUTER_MODEL_ID` | ❌ | Vision model to use (default: `google/gemma-4-26b-a4b-it:free`) |
 
-Create a `.env` file inside the `AutoCurve/` folder:
+---
 
-```env
-OPENROUTER_API_KEY=your_openrouter_api_key_here
-```
-
-The app uses OpenRouter through the OpenAI Python client, so the API key is required for image-based condition analysis.
-
-### 5. Run the App
+## Running the App
 
 ```bash
-streamlit run frontend.py
+uvicorn api:app --reload
 ```
 
-## Required Dataset
+Open `http://localhost:8000` in your browser.
 
-The app expects a file named:
+---
 
-```text
-database.xlsx
+## Running Tests
+
+```bash
+pytest tests/ -v
 ```
 
-inside the `AutoCurve/` directory.
+24 tests covering: condition score clamping, valuation model inputs/outputs, API failure handling, data loading and cleaning.
 
-The dataset should include at least the following columns:
+---
 
-```text
-manufacturer
-model
-year
-price
-odometer
+## Reproducing Model Metrics
+
+```bash
+python evaluate_model.py
 ```
 
-Additional supported columns include:
+This re-trains and re-evaluates the global model and overwrites `MODEL_METRICS.md`.
 
-```text
-condition
-fuel
-transmission
-drive
-title_status
-state
-```
+---
 
-These columns improve filtering and valuation quality.
+## Deployment
 
-## Environment Variables
+The app is a standard FastAPI service, deployable to any platform that runs Python web servers (Railway, Render, Fly.io).
 
-| Variable | Description |
-| --- | --- |
-| `OPENROUTER_API_KEY` | API key used to call the OpenRouter vision model for vehicle image analysis |
+### Railway (recommended — always-on)
 
-## Current Limitations
+1. Push the repo to GitHub (ensure `.env` is in `.gitignore`).
+2. Go to [railway.app](https://railway.app) → **New Project → Deploy from GitHub repo**.
+3. Set **Root Directory** to `AutoCurve`.
+4. Set the **Start Command**:
+   ```bash
+   uvicorn api:app --host 0.0.0.0 --port $PORT
+   ```
+5. Add environment variables in the dashboard:
+   - `OPENROUTER_API_KEY` = your key
+   - `OPENROUTER_MODEL_ID` = `google/gemma-4-26b-a4b-it:free`
+6. Deploy.
 
-This project is a valuation assistant, not a guaranteed appraisal tool. The estimate depends heavily on the quality, size, and coverage of the dataset.
+### Render
 
-Current limitations include:
+Same as above, but note the free tier spins down after 15 min of inactivity (slow cold start on the next request). Use a paid instance or Railway to keep it always-on.
 
-- The valuation model uses relatively simple regression and weighted pricing logic.
-- The estimate may be weak when the dataset has very few examples for a selected make and model.
-- The image analysis depends on the quality and angle of uploaded photos.
-- The AI vision model may miss damage that is not visible in the images.
-- The current system does not verify VIN, trim, accident history, location-based pricing, or live marketplace listings.
-- The current rate limiter is in-process, so it is best suited for single-instance deployments.
+- Build command: `pip install -r requirements.txt`
+- Start command: `uvicorn api:app --host 0.0.0.0 --port $PORT`
+
+### Important before deploying
+- Confirm `database.xlsx` is committed (it is not a secret).
+- Confirm `.env` is in `.gitignore` ✅ — secrets go in the platform dashboard only.
+
+---
+
+## Limitations
+
+- Dataset is USA Craigslist listings only; international pricing not covered.
+- Listing prices are asking prices, not final sale prices.
+- Sparse data for rare makes/models degrades estimates.
+- AI condition scoring accuracy depends on image quality and lighting.
+- Rate limiter (15 req/min) is in-process — not shared across multiple server instances.
+
+---
 
 ## Future Improvements
 
-Potential improvements include:
-
-- Add a proper saved model pipeline using joblib or pickle.
-- Add stronger model evaluation metrics.
-- Compare multiple models such as Random Forest, Gradient Boosting, and XGBoost.
-- Add live marketplace scraping or API integration.
-- Add VIN decoding.
-- Include trim-level vehicle matching.
-- Add location-based price adjustments.
-- Add confidence intervals or estimated price ranges.
-- Improve error handling and logging.
-- Add unit tests for backend valuation functions.
-- Remove development-only debug captions from the frontend.
-- Deploy the app on Streamlit Community Cloud or another hosting platform.
-- Add screenshots and a live demo link to the README.
-
-## Suggested Requirements File
-
-```text
-streamlit
-pandas
-scikit-learn
-plotly
-pillow
-python-dotenv
-openai
-duckduckgo-search
-openpyxl
-```
-
-## Disclaimer
-
-AutoCurve Assistant provides an estimated used-vehicle value based on available data, statistical trends, and AI-assisted image analysis. It should be used as an informational tool only. Final vehicle value may vary based on market conditions, vehicle history, trim, location, mechanical condition, accident records, and professional inspection results.
+- VIN lookup for trim/options/accident history
+- Regional price adjustment by ZIP code
+- Gradient-boosted tree model (XGBoost) for non-linear feature interactions
+- Verified sale prices instead of listing prices
+- Redis-backed distributed rate limiter for multi-instance deployments
